@@ -1,0 +1,128 @@
+/**
+ * Copyright 2026 Taito United
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+resource "upcloud_managed_object_storage" "instance" {
+  for_each          = { for item in local.locations : item => item }
+  name              = "${var.project_id}-${each.value}"
+  region            = each.value
+  configured_status = "started"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "upcloud_managed_object_storage_bucket" "bucket" {
+  for_each     = { for item in local.storageBuckets : item.name => item }
+  service_uuid = upcloud_managed_object_storage.instance[each.value.location].id
+
+  name = each.value.name
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+/* TODO: set cors, lifecycle rules, etc with the objsto provider
+resource "google_storage_bucket" "bucket" {
+  for_each      = {for item in local.storageBuckets: item.name => item}
+  name          = each.value.name
+  location      = each.value.location
+  storage_class = each.value.storageClass
+
+  labels = {
+    project   = var.project_id
+    purpose   = each.value.purpose
+  }
+
+  dynamic "cors" {
+    for_each = coalesce(each.value.corsRules, [])
+    content {
+      origin = cors.value.allowedOrigins
+      method = coalesce(cors.value.allowedMethods, ["GET","HEAD"])
+      response_header = coalesce(cors.value.exposeHeaders, ["*"])
+      max_age_seconds = coalesce(cors.value.maxAgeSeconds, 5)
+    }
+  }
+
+  versioning {
+    enabled = each.value.versioningEnabled
+  }
+
+  hierarchical_namespace {
+    enabled = each.value.hierarchicalNamespaceEnabled
+  }
+
+  uniform_bucket_level_access = each.value.uniformBucketLevelAccessEnabled
+  public_access_prevention = each.value.publicAccessPreventionEnabled ? "enforced" : "inherited"
+
+
+  # transition
+  dynamic "lifecycle_rule" {
+    for_each = each.value.transitionRetainDays != null && each.value.transitionRetainDays != "" ? [1] : []
+    content {
+      condition {
+        age = each.value.transitionRetainDays
+      }
+      action {
+        type = "SetStorageClass"
+        storage_class = each.value.transitionStorageClass
+      }
+    }
+  }
+
+  # versioning
+  dynamic "lifecycle_rule" {
+    for_each = each.value.versioningRetainDays != null && each.value.versioningRetainDays != "" ? [1] : []    
+    content {
+      condition {
+        age = each.value.versioningRetainDays
+        with_state = "ARCHIVED"
+      }
+      action {
+        type = "Delete"
+      }
+    }
+  }
+
+  # lock
+  dynamic "retention_policy" {
+    for_each = each.value.lockRetainDays != null && each.value.lockRetainDays != "" ? [1] : []        
+    content {
+      is_locked           = true
+      retention_period    = 60 * 60 * 24 * each.value.lockRetainDays
+    }
+  }
+
+  # autoDeletion
+  dynamic "lifecycle_rule" {
+    for_each = each.value.autoDeletionRetainDays != null && each.value.autoDeletionRetainDays != "" ? [1] : []        
+    content {
+      condition {
+        age = each.value.autoDeletionRetainDays
+        with_state = "ANY"
+      }
+      action {
+        type = "Delete"
+      }
+    }
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+*/
