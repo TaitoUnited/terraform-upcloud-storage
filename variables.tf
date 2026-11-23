@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-variable "project_id" {
+variable "project_name" {
   type = string
 }
 

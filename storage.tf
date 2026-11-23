@@ -16,7 +16,7 @@
 
 resource "upcloud_managed_object_storage" "instance" {
   for_each          = { for item in local.locations : item => item }
-  name              = "${var.project_id}-${each.value}"
+  name              = "${var.project_name}-${each.value}"
   region            = each.value
   configured_status = "started"
 
